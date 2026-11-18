@@ -1,0 +1,562 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Library — تحليل منصة سوق الكتب الورقية</title>
+<style>
+  :root{
+    --ink:#1f2937; --muted:#6b7280; --line:#e5e7eb;
+    --brand:#7c3aed; --brand-soft:#f3f0ff;
+    --good:#047857; --good-soft:#ecfdf5;
+    --bad:#b91c1c; --bad-soft:#fef2f2;
+    --warn:#b45309; --warn-soft:#fffbeb;
+    --info:#0369a1; --info-soft:#f0f9ff;
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0; background:#fafafa; color:var(--ink);
+    font-family:"Segoe UI",Tahoma,"Noto Kufi Arabic",sans-serif;
+    line-height:1.9; font-size:15.5px;
+  }
+  .wrap{max-width:960px; margin:0 auto; padding:0 20px 60px}
+
+  /* ===== Header ===== */
+  header{
+    background:linear-gradient(135deg,#4c1d95,#7c3aed);
+    color:#fff; padding:48px 20px 40px; text-align:center;
+  }
+  header h1{margin:0 0 6px; font-size:34px; font-weight:800}
+  header .sub{font-size:18px; opacity:.92; margin-bottom:18px}
+  .badges span{
+    display:inline-block; background:rgba(255,255,255,.15);
+    border:1px solid rgba(255,255,255,.35); border-radius:999px;
+    padding:4px 16px; margin:4px; font-size:14px;
+  }
+  header .doc-type{margin-top:20px; font-size:13px; opacity:.75}
+
+  /* ===== TOC ===== */
+  nav.toc{
+    position:sticky; top:0; z-index:10; background:#fff;
+    border-bottom:1px solid var(--line); padding:10px 0;
+    overflow-x:auto; white-space:nowrap;
+  }
+  nav.toc a{
+    display:inline-block; color:var(--brand); text-decoration:none;
+    font-size:13.5px; padding:3px 12px; border-radius:999px;
+  }
+  nav.toc a:hover{background:var(--brand-soft)}
+
+  /* ===== Sections ===== */
+  section{margin:44px 0}
+  h2{
+    font-size:22px; font-weight:800; color:#111827;
+    border-right:5px solid var(--brand); padding-right:14px; margin:0 0 18px;
+  }
+  h2 .num{color:var(--brand); margin-left:8px}
+  h3{font-size:17px; margin:20px 0 8px; color:#374151}
+  p{margin:8px 0}
+  ul{margin:8px 0; padding-right:22px}
+  li{margin:4px 0}
+
+  .cards{display:grid; grid-template-columns:repeat(auto-fit,minmax(240px,1fr)); gap:14px; margin:14px 0}
+  .card{
+    background:#fff; border:1px solid var(--line); border-radius:12px;
+    padding:16px 18px; box-shadow:0 1px 3px rgba(0,0,0,.04);
+  }
+  .card h3{margin-top:0; font-size:16px}
+  .card .role{font-size:22px; margin-bottom:6px}
+
+  .callout{
+    border-radius:12px; padding:16px 20px; margin:14px 0; border:1px solid var(--line);
+  }
+  .callout.key{background:var(--brand-soft); border-color:#ddd0fb; font-size:17px; font-weight:600}
+  .callout.warn{background:var(--warn-soft); border-color:#fde68a}
+  .callout.info{background:var(--info-soft); border-color:#bae6fd}
+  .callout.good{background:var(--good-soft); border-color:#a7f3d0}
+
+  /* ===== Flow steps ===== */
+  .steps{counter-reset:step; margin:14px 0}
+  .step{
+    position:relative; background:#fff; border:1px solid var(--line);
+    border-radius:10px; padding:12px 56px 12px 18px; margin:10px 0;
+  }
+  .step::before{
+    counter-increment:step; content:counter(step);
+    position:absolute; right:14px; top:12px;
+    width:28px; height:28px; border-radius:50%;
+    background:var(--brand); color:#fff; font-weight:700;
+    display:flex; align-items:center; justify-content:center; font-size:14px;
+  }
+  .step b{color:#4c1d95}
+  .step .detail{color:var(--muted); font-size:14px}
+
+  /* ===== Lists good/bad ===== */
+  .vs{display:grid; grid-template-columns:1fr 1fr; gap:14px}
+  .vs .box{border-radius:12px; padding:14px 18px}
+  .vs .kill{background:var(--bad-soft); border:1px solid #fecaca}
+  .vs .win{background:var(--good-soft); border:1px solid #a7f3d0}
+  .vs h3{margin:0 0 8px}
+  .vs .kill h3{color:var(--bad)}
+  .vs .win h3{color:var(--good)}
+
+  table{width:100%; border-collapse:collapse; margin:12px 0; font-size:14.5px}
+  th,td{border:1px solid var(--line); padding:8px 12px; text-align:right}
+  th{background:#f9fafb}
+
+  /* ===== Questions ===== */
+  .q{
+    background:#fff; border:1px solid var(--line); border-radius:12px;
+    padding:14px 18px; margin:12px 0; page-break-inside:avoid;
+  }
+  .q h3{margin:0 0 6px; font-size:16px; color:#4c1d95}
+  .q h3 .qnum{
+    display:inline-block; background:var(--brand); color:#fff; border-radius:8px;
+    min-width:30px; text-align:center; padding:1px 8px; margin-left:8px; font-size:14px;
+  }
+  .q ul{margin-top:6px}
+  .q .owner-note{color:var(--muted); font-size:13.5px}
+
+  footer{
+    margin-top:60px; text-align:center; color:var(--muted);
+    font-size:13px; border-top:1px solid var(--line); padding-top:20px;
+  }
+
+  @media (max-width:640px){ .vs{grid-template-columns:1fr} header h1{font-size:26px} }
+  @media print{
+    nav.toc{display:none}
+    body{background:#fff; font-size:13px}
+    header{background:#4c1d95 !important; -webkit-print-color-adjust:exact; print-color-adjust:exact}
+    section{page-break-inside:avoid}
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Library</h1>
+  <div class="sub">منصة سوق إلكتروني لبيع الكتب الورقية — تحليل الفكرة والتشغيل والسلوك</div>
+  <div class="badges">
+    <span>Marketplace</span><span>Operations</span><span>Financial Control</span>
+  </div>
+  <div class="doc-type">وثيقة تحليل — الفكرة والتشغيل (بدون تفاصيل تقنية/قاعدة بيانات)</div>
+</header>
+
+<nav class="toc">
+  <a href="#def">التعريف</a>
+  <a href="#value">القيمة</a>
+  <a href="#core">الفكرة الجوهرية</a>
+  <a href="#actors">الأطراف</a>
+  <a href="#flow">دورة الطلب</a>
+  <a href="#pricing">التسعير</a>
+  <a href="#catalog">الكتالوج</a>
+  <a href="#sellers">البائعون</a>
+  <a href="#trust">الثقة</a>
+  <a href="#ux">التجربة</a>
+  <a href="#bottleneck">الاختناق</a>
+  <a href="#risks">المخاطر</a>
+  <a href="#mvp">الإطلاق</a>
+  <a href="#summary">الخلاصة</a>
+  <a href="#questions">التساؤلات المفتوحة</a>
+</nav>
+
+<div class="wrap">
+
+<!-- 1 -->
+<section id="def">
+  <h2><span class="num">1</span> تعريف المشروع</h2>
+  <p><b>Library</b> — منصة سوق إلكتروني (Marketplace) لبيع الكتب الورقية، تعمل وسيطاً بين ثلاثة أطراف:</p>
+  <div class="cards">
+    <div class="card"><div class="role">👤</div><h3>المشترون</h3><p>يبحثون عن الكتب ويقارنون ويشترون — الطلب.</p></div>
+    <div class="card"><div class="role">🏪</div><h3>المكتبات / البائعون</h3><p>يعرضون كتبهم ويبيعون عبر المنصة — العرض.</p></div>
+    <div class="card"><div class="role">👨‍💼</div><h3>إدارة التطبيق</h3><p>التحكم والتشغيل وضمان الجودة — الوسيط.</p></div>
+  </div>
+  <h3>وظيفة المنصة</h3>
+  <ul>
+    <li>إتاحة البائعين لعرض كتبهم للبيع عبر إعلانات داخل المنصة <b>(لا يوجد كتالوج مركزي)</b></li>
+    <li>تمكين المشتري من البحث عن الكتاب والمقارنة بين عروض البائعين ثم الاختيار والشراء</li>
+    <li>سلة شراء واحدة قد تضم كتباً من بائعين مختلفين، تنقسم عند التأكيد إلى <b>طلب مستقل لكل بائع</b></li>
+    <li>إدارة عملية البيع عبر المنصة كوسيط (الدفع والتسليم بحسب السياسات المعتمدة)</li>
+    <li>ضمان تنفيذ الطلب وتسليمه للمشتري</li>
+  </ul>
+</section>
+
+<!-- 2 -->
+<section id="value">
+  <h2><span class="num">2</span> القيمة الأساسية</h2>
+  <div class="cards">
+    <div class="card">
+      <h3>للمشتري</h3>
+      <ul>
+        <li>تشكيلة واسعة من الكتب الورقية في مكان واحد</li>
+        <li>مقارنة واضحة بين عروض نفس الكتاب (السعر، الحالة، البائع)</li>
+        <li>شراء سهل بأقل مجهود</li>
+        <li>ثقة في التعامل عبر المنصة</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h3>للبائع (المكتبة)</h3>
+      <ul>
+        <li>قناة بيع إضافية بدون كلفة بناء متجر خاص</li>
+        <li>عملاء جدد خارج نطاقه الجغرافي</li>
+        <li>إدارة بسيطة للإعلانات والمخزون</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h3>للمنصة</h3>
+      <ul>
+        <li>عمولة على كل عملية بيع</li>
+        <li>أدوات تشغيل وترويج</li>
+        <li>بناء شبكة بائعين ومشترين (Network Effect)</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- 3 -->
+<section id="core">
+  <h2><span class="num">3</span> الفكرة الجوهرية</h2>
+  <div class="callout key">
+    البائع يعرض كتبه ← المشتري يبحث ويقارن ← يختار البائع المناسب ← يشتري عبر المنصة ← البائع يجهّز ← التسليم ← الإغلاق
+  </div>
+  <p>لا يوجد تنافس تفاعلي (عروض/مزايدة) بين البائعين؛ التنافس يحدث عبر <b>المقارنة المباشرة</b> للمشتري بين الإعلانات المعروضة — نمط المتاجر الإلكترونية المعروف.</p>
+  <p><b>هذا هو القلب الحقيقي للنظام.</b></p>
+</section>
+
+<!-- 4 -->
+<section id="actors">
+  <h2><span class="num">4</span> الأطراف وسلوكهم</h2>
+  <div class="cards">
+    <div class="card">
+      <div class="role">👤</div><h3>المشتري</h3>
+      <ul>
+        <li>يبحث عن كتاب معيّن (عنوان، مؤلف، ISBN/باركود) أو يتصفح</li>
+        <li>يقارن بين عروض البائعين لنفس الكتاب</li>
+        <li>يجمع مشترياته في سلة واحدة حتى لو من بائعين مختلفين</li>
+        <li>يريد السرعة + السعر المناسب + الثقة</li>
+      </ul>
+    </div>
+    <div class="card">
+      <div class="role">🏪</div><h3>البائع (المكتبة)</h3>
+      <ul>
+        <li>يريد الربح وقناة بيع جاهزة</li>
+        <li>ينشئ ويدير إعلانات كتبه بنفسه (السعر والكمية والوصف)</li>
+        <li>يجهّز الطلبات المستلمة فقط؛ البيع يتم عبر المنصة</li>
+        <li>يحتاج واجهة إدارة بسيطة وواضحة</li>
+      </ul>
+    </div>
+    <div class="card">
+      <div class="role">👨‍💼</div><h3>الإدارة / مشغل التطبيق</h3>
+      <ul>
+        <li>إدارة البائعين (اعتماد، متابعة)</li>
+        <li>مراقبة جودة السوق والإعلانات</li>
+        <li>ضبط متغيّرات النظام التشغيلية</li>
+        <li>زيادة حجم المبيعات والعمولات</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- 5 -->
+<section id="flow">
+  <h2><span class="num">5</span> دورة حياة الطلب</h2>
+  <div class="steps">
+    <div class="step"><b>إنشاء الإعلان (البائع)</b><div class="detail">يضيف كتاباً للبيع: التعريف (ISBN/باركود أو عنوان + مؤلف)، السعر، الكمية، الحالة، الوصف والصور</div></div>
+    <div class="step"><b>البحث والاختيار (المشتري)</b><div class="detail">يبحث أو يتصفح، تظهر له الإعلانات المتوفرة، يقارن ويختار البائع المناسب</div></div>
+    <div class="step"><b>السلة</b><div class="detail">سلة واحدة قد تجمع كتباً من بائعين مختلفين</div></div>
+    <div class="step"><b>تأكيد الطلب</b><div class="detail">عند التأكيد تنقسم السلة إلى طلب مستقل لكل بائع (Sub-Orders)</div></div>
+    <div class="step"><b>الدفع</b><div class="detail">بحسب النموذج المالي المعتمد — سؤال مفتوح</div></div>
+    <div class="step"><b>التجهيز</b><div class="detail">كل بائع يجهّز طلبه الخاص</div></div>
+    <div class="step"><b>التوصيل</b><div class="detail">بحسب نموذج التوصيل المعتمد — سؤال مفتوح</div></div>
+    <div class="step"><b>الإغلاق</b><div class="detail">إنهاء الطلب + تسجيل المستحقات + التسوية</div></div>
+  </div>
+</section>
+
+<!-- 6 -->
+<section id="pricing">
+  <h2><span class="num">6</span> نموذج التسعير</h2>
+  <div class="callout good"><b>تسعير حر من البائع:</b> كل بائع يحدد سعر كتابه بنفسه.</div>
+  <ul>
+    <li>المشتري يقارن بين البائعين عبر نتائج البحث وصفحة الكتاب</li>
+    <li>لا يوجد تفاوض سعري داخل التطبيق ولا مسار موافقة على السعر — السعر المعروض هو سعر البيع</li>
+  </ul>
+  <p><b>الهدف:</b> شفافية السوق (المشتري يرى البدائل ويختار) ومنافسة سعرية طبيعية بين البائعين دون تدخل تشغيلي.</p>
+</section>
+
+<!-- 7 -->
+<section id="catalog">
+  <h2><span class="num">7</span> الكتالوج والتعريف بالكتاب</h2>
+  <ul>
+    <li><b>لا يوجد كتالوج مركزي:</b> كل بائع ينشئ إعلانه المستقل لكل كتاب يبيعه</li>
+    <li>التعريف بالكتاب يكون عبر أكثر من وسيلة:
+      <ul>
+        <li>ISBN / باركود (عند توفره)</li>
+        <li>العنوان + المؤلف</li>
+        <li>بيانات إضافية: الناشر، سنة النشر، عدد الصفحات، اللغة</li>
+      </ul>
+    </li>
+    <li>تجميع عروض نفس الكتاب للمشتري عند البحث يعتمد على مطابقة هذه المعرفات (تفاصيل الآلية قرار تصميم لاحق)</li>
+  </ul>
+</section>
+
+<!-- 8 -->
+<section id="sellers">
+  <h2><span class="num">8</span> البائعون</h2>
+  <ul>
+    <li><b>افتراضياً:</b> البيع مقتصر على <b>المكتبات المسجلة</b> بعد اعتمادها من إدارة المنصة</li>
+    <li><b>متغيّر نظام</b> للسماح بانضمام <b>البائعين المستقلين</b> (أفراد) عند الرغبة في التوسع</li>
+    <li><b>الكتب المستعملة:</b> السماح ببيعها مرتبط بمتغيّر في إعدادات النظام (سؤال مفتوح)</li>
+  </ul>
+</section>
+
+<!-- 9-10 -->
+<section id="financial">
+  <h2><span class="num">9–10</span> العمولة والنظام المالي</h2>
+  <div class="callout info">
+    المبدأ: «المنصة تأخذ مقابل توفير قناة البيع والعملاء». المصدر: البائع.
+  </div>
+  <p>النموذج المالي (وسيط مالي Escrow مقابل دفع مباشر للبائع)، نسبة العمولة وآلية التحصيل، وطرق الدفع المعتمدة لسوق عُمان والخليج — كلها ضمن <a href="#questions">التساؤلات المفتوحة</a> بانتظار قرار صاحب المشروع.</p>
+</section>
+
+<!-- 11 -->
+<section id="trust">
+  <h2><span class="num">11</span> طبقة الثقة</h2>
+  <p>عنصر أساسي في نجاح السوق، يُبنى عبر:</p>
+  <ul>
+    <li>تقييم البائعين والمشترين للتجربة</li>
+    <li>وضوح حالة الكتاب (جديد/مستعمل) ودقة الوصف</li>
+    <li>سياسة إرجاع واسترداد واضحة</li>
+    <li>دعم العملاء</li>
+  </ul>
+  <div class="callout warn"><b>بدون ثقة ← فشل المشروع</b></div>
+</section>
+
+<!-- 12 -->
+<section id="ux">
+  <h2><span class="num">12</span> تجربة المستخدم</h2>
+  <div class="callout key">المبدأ: «أقل مجهود ممكن»</div>
+  <div class="cards">
+    <div class="card">
+      <h3>المشتري</h3>
+      <ul>
+        <li>يبحث بالعنوان/المؤلف/ISBN</li>
+        <li>يقارن العروض ويضيف للسلة</li>
+        <li>إتمام شراء سريع</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h3>ميزات مهمة</h3>
+      <ul>
+        <li>حفظ بيانات الشحن والدفع</li>
+        <li>إعادة الشراء من الطلبات السابقة</li>
+        <li>قائمة مفضلة / تنبيه عند توفر كتاب</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- 13 -->
+<section id="bottleneck">
+  <h2><span class="num">13</span> نقطة الاختناق</h2>
+  <div class="callout warn">
+    <b>⚠️ تبنّي البائعين وجودة الإعلانات:</b> إذا لم يضف البائعون إعلانات كافية أو كانت بياناتها ناقصة ← السوق يبدو فقيراً والمشتري لا يجد كتبه.
+  </div>
+  <p><b>الحل:</b></p>
+  <ul>
+    <li>واجهة إدخال سريعة للبائع (بحث بالـ ISBN لتعبئة بيانات الكتاب)</li>
+    <li>متابعة الإعلانات الناقصة أو المكررة</li>
+    <li>تحفيز البائعين النشطين</li>
+  </ul>
+</section>
+
+<!-- 14-16 -->
+<section id="operations">
+  <h2><span class="num">14–16</span> التشغيل والتوصيل والنظام اللحظي</h2>
+  <p><b>التشغيل:</b> النظام ليس فقط تطبيق — بل يحتاج إدارة اعتماد البائعين، فريق دعم، متابعة الطلبات، ومراقبة جودة الإعلانات. <b>نجاح التشغيل = نجاح المشروع.</b></p>
+  <p><b>التوصيل:</b> مسؤوليته ونموذجه (مندوبون، شركاء شحن، استلام من المكتبة) — <a href="#q4">سؤال مفتوح</a>.</p>
+  <p><b>النظام اللحظي:</b> ضروري لإشعارات الطلبات للبائع، وتحديث حالة الطلب للمشتري، وتنبيهات التوفر. بدونه تصبح التجربة بطيئة.</p>
+</section>
+
+<!-- 17-19 -->
+<section id="risks">
+  <h2><span class="num">17–19</span> المخاطر وعوامل النجاح والفشل</h2>
+  <p><b>المخاطر:</b> قلة الكتب المعروضة في البداية، إعلانات ناقصة أو مكررة، تأخير التوصيل، ضعف الثقة، تعقيد تجربة البحث والشراء.</p>
+  <div class="vs">
+    <div class="box kill">
+      <h3>❌ ما الذي قد يقتل المشروع؟</h3>
+      <ul>
+        <li>مخزون معروض ضعيف لا يلبي بحث المشتري</li>
+        <li>أسعار غير تنافسية مقارنة بالبدائل</li>
+        <li>تجربة شراء معقدة</li>
+        <li>تأخير في التسليم</li>
+        <li>ضعف في التشغيل</li>
+        <li>عدم ثقة</li>
+      </ul>
+    </div>
+    <div class="box win">
+      <h3>✔ ما الذي سينجحه؟</h3>
+      <ul>
+        <li>تنوع وغنى العروض</li>
+        <li>سهولة البحث والمقارنة</li>
+        <li>سرعة التنفيذ والتسليم</li>
+        <li>ثقة</li>
+        <li>تجربة سهلة</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- 20-22 -->
+<section id="mvp">
+  <h2><span class="num">20–22</span> الإطلاق والتوسع والمستقبل</h2>
+  <div class="cards">
+    <div class="card">
+      <h3>استراتيجية الإطلاق (MVP)</h3>
+      <ul>
+        <li>مدينة واحدة</li>
+        <li>عدد محدود من المكتبات المعتمدة</li>
+        <li>نماذج دفع وتوصيل بسيطة</li>
+        <li>بدون تعقيد</li>
+      </ul>
+      <p><b>الهدف:</b> اختبار الفكرة وليس الكمال.</p>
+    </div>
+    <div class="card">
+      <h3>التوسع</h3>
+      <ul>
+        <li>إضافة مكتبات وبائعين (تفعيل متغيّر البائعين المستقلين)</li>
+        <li>توسيع نطاق المدن/الدول</li>
+        <li>دعم الكتب المستعملة عبر متغيّر النظام</li>
+        <li>ميزات ذكية (اقتراحات، تنبيهات توفر)</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h3>المستقبل</h3>
+      <ul>
+        <li>مرجع لسوق الكتب الورقية في المنطقة</li>
+        <li>مصدر بيانات قوي عن الطلب على الكتب</li>
+        <li>قناة بيع إضافية للناشرين والموزعين</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- 24 -->
+<section id="summary">
+  <h2><span class="num">24</span> الخلاصة النهائية</h2>
+  <div class="callout key">
+    هذا المشروع ليس تطبيقاً عادياً — بل نظام متكامل لإدارة: العرض (إعلانات البائعين)، الطلب (بحث وشراء المشتري)، المال، الثقة. وأنت في المنتصف. نجاحك يعتمد على <b>«إدارة التوازن»</b>.
+  </div>
+</section>
+
+<!-- Questions -->
+<section id="questions">
+  <h2>التساؤلات المفتوحة — بانتظار قرار صاحب المشروع</h2>
+  <p class="owner-note" style="color:var(--muted)">نقاط تحتاج قراراً منتجياً. كل سؤال مستقل ويمكن نقاشه وحسمه منفرداً.</p>
+
+  <div class="q" id="q1">
+    <h3><span class="qnum">1</span>النموذج المالي</h3>
+    <ul>
+      <li>هل المنصة <b>وسيط مالي (Escrow)</b>: تستلم مبلغ المشتري وتحوّل مستحق البائع بعد التسليم؟</li>
+      <li>أم <b>دفع مباشر للبائع</b> والمنصة تحصّل عمولتها دورياً؟</li>
+      <li>متى يُعتبر البائع مستحقاً للتحويل: عند الشحن، التسليم، أم بعد انتهاء فترة الإرجاع؟</li>
+    </ul>
+  </div>
+
+  <div class="q" id="q2">
+    <h3><span class="qnum">2</span>طرق الدفع</h3>
+    <ul>
+      <li>المشروع موجّه لسوق <b>عُمان والخليج</b>: ما طرق الدفع المطلوب دعمها؟ (بطاقات عبر بوابة دفع، تحويل بنكي/حوالة، دفع عند الاستلام، محافظ محلية)</li>
+      <li>هل يُسمح بأكثر من طريقة دفع أم تُطلق تدريجياً؟</li>
+    </ul>
+  </div>
+
+  <div class="q" id="q3">
+    <h3><span class="qnum">3</span>العمولة</h3>
+    <ul>
+      <li>النسبة: ثابتة لكل البائعين أم متغيرة حسب الفئة/الاتفاق؟</li>
+      <li>تُحسب على سعر الكتاب فقط أم تشمل رسوم التوصيل؟</li>
+      <li>آلية التحصيل: خصم قبل التحويل للبائع أم فوترة دورية؟</li>
+      <li>هل العمولة مرئية للمشتري أم مدمجة؟</li>
+    </ul>
+  </div>
+
+  <div class="q" id="q4">
+    <h3><span class="qnum">4</span>التوصيل</h3>
+    <ul>
+      <li>من المسؤول: المنصة (شبكة مندوبين)، البائع، أم شركة شحن طرف ثالث؟</li>
+      <li>هل يتوفر خيار <b>الاستلام من المكتبة</b> مباشرة؟</li>
+      <li>رسوم التوصيل: من يحددها ومن يدفعها؟</li>
+      <li>في الطلب متعدد البائعين: شحنات منفصلة؟ ورسوم توصيل لكل بائع؟</li>
+      <li>نطاق التوصيل عند الإطلاق: مدينة واحدة أم أكثر؟</li>
+    </ul>
+  </div>
+
+  <div class="q" id="q5">
+    <h3><span class="qnum">5</span>الكتب المستعملة</h3>
+    <ul>
+      <li>متى يُفعّل متغيّر «السماح ببيع الكتب المستعملة»؟</li>
+      <li>كيف تُوثّق حالة الكتاب (تصنيف موحّد: كالجديد/جيد/مقبول)؟</li>
+      <li>هل تلزم صور حقيقية للنسخة أم تكفي صورة تعريفية؟</li>
+      <li>سياسة النزاع عند اختلاف الحالة الموصوفة عن المستلمة؟</li>
+    </ul>
+  </div>
+
+  <div class="q" id="q6">
+    <h3><span class="qnum">6</span>البائعون المستقلون</h3>
+    <ul>
+      <li>متى يُفعّل متغيّر «السماح بالبائعين المستقلين» (أفراد غير المكتبات)؟</li>
+      <li>شروط الاعتماد: وثائق، حد أدنى للعناوين، تقييم مبدئي؟</li>
+      <li>هل تنطبق عليهم نفس شروط المكتبات أم سياسة مختلفة؟</li>
+    </ul>
+  </div>
+
+  <div class="q" id="q7">
+    <h3><span class="qnum">7</span>العروض والتخفيضات</h3>
+    <ul>
+      <li>هل يدعم النظام تخفيضات على الإعلانات (البائع يخفّض سعر كتابه لفترة)؟</li>
+      <li>هل للمنصة عروض/كوبونات تشغيلية على مستوى السوق؟</li>
+      <li>هل تُحسب العمولة على السعر قبل الخصم أم بعده؟</li>
+    </ul>
+  </div>
+
+  <div class="q" id="q8">
+    <h3><span class="qnum">8</span>الإرجاع والاسترداد</h3>
+    <ul>
+      <li>هل يوجد إرجاع؟ وضمن أي مدة وحالات (وصول تالف، غير مطابق للوصف)؟</li>
+      <li>من يتحمل كلفة إرجاع الشحن؟</li>
+      <li>آلية استرداد المبلغ لكل نموذج مالي محتمل؟</li>
+    </ul>
+  </div>
+
+  <div class="q" id="q9">
+    <h3><span class="qnum">9</span>العملة والضرائب</h3>
+    <ul>
+      <li>عملة واحدة (الريال العماني مثلاً) أم تعدد عملات لدول الخليج؟</li>
+      <li>هل تُطبّق ضريبة القيمة المضافة (VAT) وعلى من مسؤولية حسابها وتحصيلها؟</li>
+    </ul>
+  </div>
+
+  <div class="q" id="q10">
+    <h3><span class="qnum">10</span>تعدد الإعلانات لنفس الكتاب</h3>
+    <ul>
+      <li>هل يجوز للبائع الواحد نشر أكثر من إعلان لنفس الكتاب (نسخ بحالات مختلفة)؟</li>
+      <li>كيف تُجمّع عروض البائعين لنفس الكتاب في نتائج البحث بدون كتالوج مركزي؟</li>
+    </ul>
+  </div>
+
+  <div class="q" id="q11">
+    <h3><span class="qnum">11</span>الطلبات غير المكتملة</h3>
+    <ul>
+      <li>ماذا يحدث إذا رفض البائع طلباً أو لم يجهّزه خلال مهلة؟ (إلغاء تلقائي، غرامة، إعادة توجيه لبائع آخر؟)</li>
+      <li>هل يُسمح بالتوفر الجزئي ضمن طلب واحد لنفس البائع (تجهيز المتاح فقط)؟</li>
+    </ul>
+  </div>
+</section>
+
+<footer>
+  Library — تحليل منصة سوق الكتب الورقية · وثيقة نقاش لصاحب المشروع
+</footer>
+
+</div>
+</body>
+</html>
